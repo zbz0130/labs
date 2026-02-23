@@ -35,7 +35,7 @@ class CausalAttention(nn.Module):
 
     def __init__(self, config: ModelConfig):
         super().__init__()
-
+        self.config = config
         # Using attention dim from attention is all you need
         assert config.d_model % config.n_heads == 0
         self.d_attention = int(config.d_model / config.n_heads)
@@ -60,9 +60,22 @@ class CausalAttention(nn.Module):
     def forward(
         self, x: Float[Tensor, "batch seq_len d_model"]
     ) -> Float[Tensor, "batch seq_len d_model"]:
-
-        # TODO, complete 
-        return torch.empty(1)
+        B, T, C = x.shape
+        H=self.config.n_heads
+        q = self.W_q(x) #(B,T,C)
+        k = self.W_k(x) #(B,T,C)
+        v = self.W_v(x) #(B,T,C)
+        q = rearrange(q,'b t (h d) -> b h t d',h=H)
+        k = rearrange(k,'b t (h d) -> b h t d',h=H)
+        v = rearrange(v,'b t (h d) -> b h t d',h=H)
+        attn_scores = (q@k.transpose(-2,-1))*(self.d_attention**-0.5)
+        mask = self.causal_mask[:,:,:T,:T]
+        attn_scores = attn_scores.masked_fill(mask==0,float('-inf'))
+        attn_weights = F.softmax(attn_scores, dim=-1)
+        out = attn_weights@v    #(B,H,T,d)
+        out = rearrange(out, 'b h t d -> b t (h d)')
+        return self.W_o(out)
+        
 
 
 
@@ -88,8 +101,10 @@ class MLP(nn.Module):
         self, x: Float[Tensor, "batch seq_len d_model"]
     ) -> Float[Tensor, "batch seq_len d_model"]:
 
-        # TODO, complete
-        return torch.empty(1)
+        x = self.fc1(x)
+        x = self.gelu(x)
+        x = self.fc2(x)
+        return x
         
 
 class DecoderBlock(nn.Module):
