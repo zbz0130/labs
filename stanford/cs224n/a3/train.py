@@ -110,8 +110,14 @@ def train(
     # Create dense batches of [batch_size, seq_len]
     model = Transformer(model_config).to(device)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate,weight_decay = 0.1)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr = learning_rate,
+        total_steps = max_steps,
+        pct_start = 0.1,
+        anneal_strategy = 'cos'
+    )
     num_chunks: int = dataset.shape[0]
 
     losses: List[float] = []
@@ -147,7 +153,7 @@ def train(
             grad_norms.append(grad_norm)
 
         optimizer.step()
-
+        scheduler.step()
         losses.append(loss.item())
 
         num_steps_completed += 1
@@ -169,10 +175,10 @@ if __name__ == "__main__":
     )
 
     train(
-        learning_rate=1e-5,
+        learning_rate=1e-4,
         gradient_clipping=1,
         model_config = tiny_model_config,
-        batch_size=16,
+        batch_size=64,
         max_steps=100,
     )
 

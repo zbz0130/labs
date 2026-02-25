@@ -160,6 +160,7 @@ class Transformer(nn.Module):
                 torch.nn.init.normal_(
                     p, mean=0.0, std=0.02 / math.sqrt(2 * self.config.n_layers)
                 )
+        self.lm_head.weight = self.embeddings.weight
 
     def forward(
         self, x: Int[Tensor, "batch_size seq_len"]
