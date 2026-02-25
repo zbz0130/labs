@@ -120,9 +120,11 @@ class DecoderBlock(nn.Module):
     def forward(
         self, x: Float[Tensor, "batch seq_len d_model"]
     ) -> Float[Tensor, "batch seq_len d_model"]:
+        x = x + self.attention(self.pre_layer_norm(x))
+        x = x + self.mlp(self.post_layer_norm(x))
+        return x
 
-        # TODO complete
-        return torch.empty(1)
+        
 
 
 class Transformer(nn.Module):
@@ -162,9 +164,22 @@ class Transformer(nn.Module):
     def forward(
         self, x: Int[Tensor, "batch_size seq_len"]
     ) -> Float[Tensor, "batch seq_len vocab_size"]:
+        device = x.device
+        B, T = x.shape
+        # Token嵌入
+        tok_emb = self.embeddings(x)    #(B,T,d_model)
+        # 位置嵌入
+        pos = torch.arange(0,T,dtype = torch.long, device = device)
+        pos_emb = self.position_embeddings(pos)     #(T,d_model)
+        x = tok_emb + pos_emb
+        #经过所有decoder
+        for block in self.backbone:
+            x = block(x)
+        #最终层归一化与线性层映射回词表大小
+        x = self.final_layer_norm(x)
+        logits = self.lm_head(x)
+        return logits        
 
-        # TODO, complete
-        return torch.empty(1)
 
     @torch.no_grad()
     def generate(
@@ -173,19 +188,32 @@ class Transformer(nn.Module):
         num_new_tokens: int,
     ) -> Int[Tensor, "batch_size seq_len+num_new_tokens"]:
 
-        # TODO, complete
-        return torch.empty(1)
+        for _ in range(num_new_tokens):
+            x_cond = x if x.size(1) <=self.config.context_length else x[:,-self.config.context_length:]
+            #前向传播得到logits
+            logits = self.forward(x_cond)
+            #取最后一个logits
+            last_logits = logits[:, -1, :]
+            next_token = torch.argmax(last_logits, dim = -1, keepdim = True)
+            x = torch.cat((x,next_token), dim = 1)
+        return x
 
 
     def get_loss_on_batch(
         self,
         input_ids: Int[Tensor, "batch_size seq_len"], 
     ) -> Float[Tensor, ""]:
-
-        # TODO, complete
-        return torch.empty(1)
-
-
+        logits = self.forward(input_ids)    #(B,T,Vocab)
+        #错位对齐，t位置的logits应该是原输入中t+1位置的token
+        #logits舍弃最后一位，labels舍弃第一位
+        shift_logits = logits[:,:-1,:].contiguous()
+        shift_labels = input_ids[:,1:].contiguous()
+        #展平向量以符合cross_entropy的输入要求
+        loss = F.cross_entropy(
+            shift_logits.view(-1,shift_logits.size(-1)),
+            shift_labels.view(-1)
+        )
+        return loss
     @classmethod
     def from_pretrained(cls):
         """
