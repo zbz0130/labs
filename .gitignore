@@ -1,0 +1,31 @@
+cat <<EOF > .gitignore
+# 忽略编译产物
+*.exe
+*.dll
+*.o
+*.obj
+*.out
+*.sln
+*.vcxproj
+*.filters
+*.user
+.vs/
+build/
+dist/
+
+# 忽略 Python 缓存和环境
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+
+# 忽略大型数据集（非常重要！）
+*.bin
+*.pt
+*.pth
+*.zip
+*.tar.gz
+
+# 忽略系统文件
+.DS_Store
+EOF
