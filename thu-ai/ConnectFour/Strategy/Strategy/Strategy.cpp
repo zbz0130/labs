@@ -1,4 +1,8 @@
 #include <iostream>
+#include <vector>
+#include<algorithm>
+#include<climits>
+#include<cstring>
 #include "Point.h"
 #include "Strategy.h"
 
@@ -25,13 +29,32 @@ using namespace std;
 	output:
 		你的落子点Point
 */
-bool checkWin(int **board, int M, int N, int x, int y, int player);
+bool checkWin(int** board, int M, int N, int x, int y, int player);
+
+int evaluateWindow(std::vector<int> window);
+
+int evaluateBoard(int** board, int M, int N);
+
+bool isValid(int col, const int* top);
+
+int minimax(
+    int** board,
+    int M,
+    int N,
+    int* top,
+    int depth,
+    int alpha,
+    int beta,
+    bool maximizingPlayer
+);
 
 extern "C" Point* getPoint(const int M, const int N, const int* top, const int* _board, 
 	const int lastX, const int lastY, const int noX, const int noY){
 	/*
 		不要更改这段代码
 	*/
+	int mytop[15] = {};
+	memcpy(mytop, top, sizeof(top));
 	int x = -1, y = -1;//最终将你的落子点存到x,y中
 	int** board = new int*[M];
 	for(int i = 0; i < M; i++){
@@ -63,11 +86,49 @@ extern "C" Point* getPoint(const int M, const int N, const int* top, const int* 
 			int row = top[col]-1;
 			board[row][col] = 1;
 			if(checkWin(board, M, N, row, col, 1)){
-				
+				x = row;
+				y = col;
+				board[row][col] = 0;
+				break;
 			}
+			board[row][col] = 0;
 		}
 	}
-	
+	if(x!=-1)
+	{
+		clearArray(M, N, board);
+		return new Point(x, y);
+	}
+
+	int bestScore = INT_MIN;
+	int bestCol = -1;
+	const int SEARCH_DEPTH = 6;
+	std::vector<int> order;
+	int center = N/2;
+	order.push_back(center);
+	for(int d = 1;d<=N; d++){
+		if(center - d>=0)
+			order.push_back(center-d);
+		if(center+d<N)
+			order.push_back(center+d);
+	}
+	//Alpha-Beta搜索
+	for(int col:order){
+		if(top[col]<=0)
+			continue;
+		int row = top[col] - 1;
+		board[row][col] = 2;
+		mytop[col]--;
+		int score = minimax(board, M, N, mytop, SEARCH_DEPTH - 1, INT_MIN,INT_MAX, false);
+		board[row][col] = 0;
+		mytop[col]++;
+		if(score>bestScore){
+			bestScore = score;
+			bestCol = col;
+		}
+	}
+	y = bestCol;
+	x = top[bestCol]-1;
 	/*
 		不要更改这段代码
 	*/
@@ -99,3 +160,201 @@ void clearArray(int M, int N, int** board){
 /*
 	添加你自己的辅助函数，你可以声明自己的类、函数，添加新的.h .cpp文件来辅助实现你的想法
 */
+bool checkWin(int** board, int M, int N, int x, int y, int player) {
+
+    // 四个方向：
+    // 1. 竖直
+    // 2. 水平
+    // 3. 主对角线
+    // 4. 副对角线
+    int dx[4] = {1, 0, 1, 1};
+    int dy[4] = {0, 1, 1, -1};
+
+    // 枚举四个方向
+    for (int dir = 0; dir < 4; dir++) {
+
+        int count = 1; // 包含自己
+
+        // 正方向统计
+        for (int step = 1; step < 4; step++) {
+
+            int nx = x + dx[dir] * step;
+            int ny = y + dy[dir] * step;
+
+            // 越界
+            if (nx < 0 || nx >= M || ny < 0 || ny >= N)
+                break;
+
+            // 连续相同棋子
+            if (board[nx][ny] == player)
+                count++;
+            else
+                break;
+        }
+
+        // 反方向统计
+        for (int step = 1; step < 4; step++) {
+
+            int nx = x - dx[dir] * step;
+            int ny = y - dy[dir] * step;
+
+            // 越界
+            if (nx < 0 || nx >= M || ny < 0 || ny >= N)
+                break;
+
+            // 连续相同棋子
+            if (board[nx][ny] == player)
+                count++;
+            else
+                break;
+        }
+
+        // 四连
+        if (count >= 4)
+            return true;
+    }
+
+    return false;
+}
+//评分函数
+int evaluateWindow(std::vector<int> window){
+	int self = 0;
+	int opp = 0;
+	int empty = 0;
+	for(int x:window){
+		if(x==2)
+			self++;
+		else if (x==1)
+			opp++;
+		else 
+			empty++;
+	}
+	int score = 0;
+	//自己
+	if (self == 4)
+		score += 100000;
+	else if(self ==3&&empty==1)
+		score += 1000;
+	else if(self==2&&empty==2)
+		score+=100;
+	if(opp ==4)
+		score -= 100000;
+	else if (opp==3&empty==1)
+		score -=1200;
+	else  if(opp==2&&empty ==2)
+		score -= 120;
+	return score;
+}
+//棋盘总评分
+int evaluateBoard(int** board, int M,int N){
+	int score = 0;
+	int center = N/2;
+	//中心列
+	for(int i = 0;i<M;i++){
+		if(board[i][center]==2)
+			score += 6;
+		else if(board[i][center] == 1)
+			score -= 6;
+	}
+	//横向
+	for(int i = 0; i<M;i++){
+		for(int j = 0;j+3<N;j++){
+			std::vector<int> window;
+			for(int k = 0;k<4;k++)
+				window.push_back(board[i][j+k]);
+			score += evaluateWindow(window);
+		}
+	}
+	//纵向
+	for(int i = 0;i+3<M;i++)
+	{
+		for(int j = 0;j<N;j++){
+			std::vector<int> window;
+			for(int k = 0;k<4;k++)
+				window.push_back(board[i+k][j]);
+			score += evaluateWindow(window);
+		}
+	}
+	//主对角线
+	for(int i = 0;i+3<M;i++)
+	{
+		for(int j = 0;j+3<N;j++)
+		{
+			std::vector<int> window;
+			for(int k = 0;k<4;k++)
+				window.push_back(board[i+k][j+k]);
+			score+=evaluateWindow(window);
+		}
+	}
+	//副对角线
+	for(int i = 0;i+3<M;i++){
+		for(int j = 3;j<N;j++){
+			std::vector<int> window;
+			for(int k = 0;k<4;k++)
+				window.push_back(board[i+k][j-k]);
+			score += evaluateWindow(window);
+		}
+	}
+	return score;
+}
+int minimax(int** board, int M,int N, int * top, int depth, int alpha, int beta, bool maximizingPlayer){
+	if(depth==0){
+		return evaluateBoard(board, M, N);
+	}
+	bool hasMove = false;
+	for(int col = 0;col<N;col++){
+		if(top[col]>0){
+			hasMove = true;
+			break;
+		}
+	}
+	//平局 
+	if(!hasMove) return 0;
+	if(maximizingPlayer){
+		int value = INT_MIN;
+		for(int col = 0;col<N; col++){
+			if(top[col]<=0)
+				continue;
+			int row = top[col] - 1;
+			board[row][col] = 2;
+			top[col]--;
+			int score;
+			if( checkWin(board, M, N,row,col, 2))
+				score = 1000000 + depth;
+			else
+				score = minimax(board, M, N, top, depth - 1, alpha, beta, false);
+				board[row][col] = 0;
+				top[col]++;
+				value = std::max(value, score);
+				alpha = std::max(alpha, value);
+				if(alpha >= beta)
+					break;
+			}
+			return value;
+	}
+	else{
+		int value = INT_MAX;
+		for(int col = 0;col<N;col++)
+		{
+			if(top[col]<=0)
+				continue;
+				int row = top[col] - 1;
+				board[row][col] = 1;
+				top[col]--;
+				int score;
+				if(checkWin(board,M,N,row,col,1))
+					score = -1000000 - depth;
+				else
+					score = minimax(board, M,N,top,depth-1,alpha,beta,true);
+					board[row][col]=0;
+					top[col]++;
+					value = std::min(value, score);
+					beta = std::min(beta, value);
+					if(alpha>=beta)
+						break;
+
+		}
+		return value;
+	}
+
+}
