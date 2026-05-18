@@ -1,0 +1,27 @@
+0:
+2	16141	676
+7	6525	62
+
+1:
+7	9370	247
+7	7795	86
+
+2:
+1	19653	2068
+7	13820	219
+
+3:
+2	5541	426
+2	3484	145
+
+4:
+2	4	437
+2	220	147
+
+Stat:
+ratio of A wins : 0.1
+ratio of B wins : 0.9
+ratio of Tie : 0
+
+ratio of (A wins + tie) : 0.1
+ratio of (B wins + tie) : 0.9

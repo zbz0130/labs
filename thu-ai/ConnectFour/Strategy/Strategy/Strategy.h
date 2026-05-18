@@ -1,6 +1,6 @@
 /********************************************************
-*	Strategy.h : ²ßÂÔ½Ó¿ÚÎÄ¼þ                           *
-*	ÕÅÓÀ·æ                                              *
+*	Strategy.h : ï¿½ï¿½ï¿½Ô½Ó¿ï¿½ï¿½Ä¼ï¿½                           *
+*	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½                                              *
 *	zhangyf07@gmail.com                                 *
 *	2010.8                                              *
 *********************************************************/
@@ -10,15 +10,17 @@
 
 #include "Point.h"
 
-extern "C" Point* getPoint(const int M, const int N, const int* top, const int* _board, 
+/*extern "C" __declspec(dllexport) Point*  getPoint(const int M, const int N, const int* top, const int* _board, 
+	const int lastX, const int lastY, const int noX, const int noY);*/
+extern "C"  Point*  getPoint(const int M, const int N, const int* top, const int* _board, 
 	const int lastX, const int lastY, const int noX, const int noY);
-
-extern "C"  void clearPoint(Point* p);
+//extern "C"  __declspec(dllexport) void  clearPoint(Point* p);
+extern "C"  void  clearPoint(Point* p);
 
 void clearArray(int M, int N, int** board);
 
 /*
-	Ìí¼ÓÄã×Ô¼ºµÄ¸¨Öúº¯Êý
+	ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½Ä¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?
 */
 
 
